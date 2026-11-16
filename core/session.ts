@@ -11,6 +11,7 @@ import {
 // of these plain objects, handed to Session.dispatch().
 export type Command =
   | { readonly kind: "move"; readonly direction: Direction }
+  | { readonly kind: "undo" }
   | { readonly kind: "restart" }
   | { readonly kind: "choose-level"; readonly level: number };
 
@@ -18,11 +19,13 @@ export interface SessionState {
   /** Index into LEVELS. */
   readonly level: number;
   readonly puzzle: Puzzle;
+  /** Earlier puzzles of this level, oldest first, for undo. */
+  readonly past: readonly Puzzle[];
 }
 
 export function startLevel(level: number): SessionState {
   const { name, rows } = LEVELS[level];
-  return { level, puzzle: parsePuzzle(name, rows) };
+  return { level, puzzle: parsePuzzle(name, rows), past: [] };
 }
 
 /**
@@ -34,7 +37,17 @@ export function update(state: SessionState, command: Command): SessionState {
     case "move": {
       if (isSolved(state.puzzle)) return state;
       const puzzle = move(state.puzzle, command.direction);
-      return puzzle === state.puzzle ? state : { ...state, puzzle };
+      if (puzzle === state.puzzle) return state;
+      // Memento: the old puzzle is never edited, so keeping it is a snapshot.
+      return { ...state, puzzle, past: [...state.past, state.puzzle] };
+    }
+    case "undo": {
+      if (state.past.length === 0) return state;
+      return {
+        ...state,
+        puzzle: state.past[state.past.length - 1],
+        past: state.past.slice(0, -1),
+      };
     }
     case "restart":
       return startLevel(state.level);
