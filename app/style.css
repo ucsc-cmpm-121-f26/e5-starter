@@ -155,3 +155,12 @@ button[aria-pressed="true"] {
 .controls legend {
   color: var(--muted);
 }
+
+.goals label {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.goals meter {
+  width: 100%;
+}
